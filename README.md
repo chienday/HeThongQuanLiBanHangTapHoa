@@ -1,2 +1,2 @@
 # HeThongQuanLiBanHangTapHoa
-ap dụng các patten vào dự án 
+Áp dụng các patten vào dự án 
