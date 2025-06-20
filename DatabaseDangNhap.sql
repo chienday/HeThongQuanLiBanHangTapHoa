@@ -9,4 +9,4 @@ CREATE TABLE Users (
 );
 
 -- Thêm dữ liệu mẫu
-INSERT INTO Users (Email, Password) VALUES ('admin@example.com', '123456');
+INSERT INTO Users (Email, Password) VALUES ('admin@gmail.com', '123456');
