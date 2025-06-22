@@ -1,5 +1,6 @@
 ﻿using POSMini.Models;
 using POSMini.Service;
+using POSMini.Service.Singleton;
 using POSMini.Service.Strategies;
 using System;
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ namespace POSMini
     public partial class FormQuanLyTonKho : Form
     {
 
-        private List<SanPham> _allProductsDataSource;
+        private List<SanPhamViewModel> _allProductsDataSource;
         public FormQuanLyTonKho()
         {
             InitializeComponent();
@@ -68,31 +69,31 @@ namespace POSMini
         private void UpdateDisplay()
         {
             if (_allProductsDataSource == null) return;
-
-
-            var filteredList = string.IsNullOrWhiteSpace(txtTimKiem.Text)
-                ? new List<SanPham>(_allProductsDataSource)
+            var listToDisplay = string.IsNullOrWhiteSpace(txtTimKiem.Text)
+                ? new List<SanPhamViewModel>(_allProductsDataSource)
                 : _allProductsDataSource.Where(p =>
                     p.TenSP.ToLower().Contains(txtTimKiem.Text.Trim().ToLower()) ||
                     p.MaSP.ToLower().Contains(txtTimKiem.Text.Trim().ToLower()))
                   .ToList();
 
             ISortStrategy strategy;
+            // Sử dụng đúng tên lớp Strategy đã được chuẩn hóa
             switch (cmbSapXep.SelectedItem.ToString())
             {
                 case "Theo tên A-Z": strategy = new SapXepAZ(); break;
-                case "Tồn kho từ bé đến lớn": strategy = new BedenLon(); break;
-                case "Tồn kho từ lớn đến bé": strategy = new LondenBe(); break;
-                default: strategy = new SapXepTheoLoai(); break;
+                case "Tồn kho từ lớn đến bé": strategy = new SapxepGiamDan(); break;
+                case "Tồn kho từ bé đến lớn": strategy = new SapxepTangdan(); break;
+                default: strategy = new SapXepLoai(); break;
             }
-            var sortedList = strategy.Sort(filteredList);
 
+            var sortedList = strategy.Sort(listToDisplay);
             dgvTonKho.DataSource = sortedList;
 
-            DrawInventoryPieChart(filteredList);
+            // Vẽ lại biểu đồ dựa trên danh sách đã được lọc và sắp xếp
+            DrawInventoryPieChart(sortedList);
         }
 
-        private void DrawInventoryPieChart(List<SanPham> sanPhamList)
+        private void DrawInventoryPieChart(List<SanPhamViewModel> sanPhamList)
         {
             chartTonKho.Series.Clear();
             chartTonKho.Titles.Clear();
@@ -113,7 +114,7 @@ namespace POSMini
                     .Select(group => new
                     {
                         GroupName = string.IsNullOrEmpty(group.Key) ? "Không xác định" : group.Key,
-                        TotalQuantity = group.Sum(p => p.SoLuong)
+                        TotalQuantity = group.Sum(p => p.SoLuongTon)
                     });
 
                 foreach (var group in groupedData)
@@ -128,9 +129,9 @@ namespace POSMini
             {
                 foreach (var product in sanPhamList)
                 {
-                    if (product.SoLuong > 0)
+                    if (product.SoLuongTon > 0)
                     {
-                        series.Points.AddXY(product.TenSP, product.SoLuong);
+                        series.Points.AddXY(product.TenSP, product.SoLuongTon);
                     }
                 }
             }

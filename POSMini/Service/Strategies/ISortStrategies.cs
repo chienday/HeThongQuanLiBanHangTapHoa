@@ -9,6 +9,6 @@ namespace POSMini.Service.Strategies
 {
     public interface ISortStrategy
     {
-        List<SanPham> Sort(List<SanPham> sp);
+        List<SanPhamViewModel> Sort(List<SanPhamViewModel> viewModels);
     }
 }

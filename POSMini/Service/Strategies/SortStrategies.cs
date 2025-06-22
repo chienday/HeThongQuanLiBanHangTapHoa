@@ -11,36 +11,36 @@ namespace POSMini.Service.Strategies
     // Sắp xếp theo Tên sản phẩm A-Z
     public class SapXepAZ : ISortStrategy
     {
-        public List<SanPham> Sort(List<SanPham> sp)
+        public List<SanPhamViewModel> Sort(List<SanPhamViewModel> viewModels)
         {
-            return sp.OrderBy(p => p.TenSP).ToList();
+            return viewModels.OrderBy(p => p.TenSP).ToList();
         }
     }
 
 
     // Sắp xếp theo Loại sản phẩm
-    public class SapXepTheoLoai : ISortStrategy
+    public class SapXepLoai : ISortStrategy
     {
-        public List<SanPham> Sort(List<SanPham> sp)
+        public List<SanPhamViewModel> Sort(List<SanPhamViewModel> viewModels)
         {
-            return sp.OrderBy(p => p.TenLoai).ThenBy(p => p.TenSP).ToList();
+            return viewModels.OrderBy(p => p.TenLoai).ThenBy(p => p.TenSP).ToList();
         }
     }
 
     //Sắp xếp tồn kho từ bé đến lớn và từ lớn đến bé
-    public class BedenLon : ISortStrategy
+    public class SapxepTangdan : ISortStrategy
     {
-        public List<SanPham> Sort(List<SanPham> sp)
+        public List<SanPhamViewModel> Sort(List<SanPhamViewModel> viewModels)
         {
-            return sp.OrderBy(p => p.SoLuong).ToList();
+            return viewModels.OrderBy(p => p.SoLuongTon).ToList();
         }
     }
 
-    public class LondenBe : ISortStrategy
+    public class SapxepGiamDan : ISortStrategy
     {
-        public List<SanPham> Sort(List<SanPham> sp)
+        public List<SanPhamViewModel> Sort(List<SanPhamViewModel> viewModels)
         {
-            return sp.OrderByDescending(x => x.SoLuong).ToList();
+            return viewModels.OrderByDescending(p => p.SoLuongTon).ToList();
         }
     }
 

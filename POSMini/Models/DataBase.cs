@@ -47,6 +47,7 @@ namespace POSMini.Models
         public decimal GiaNhap { get; set; }
         public decimal GiaBan { get; set; }
         public int SoLuongTon { get; set; } = 0;
+        public string HinhAnh { get; set; }
         public int SoLuongToiThieu { get; set; } = 5;
         public string DonViTinh { get; set; } = "Cái";
         public string MoTa { get; set; }

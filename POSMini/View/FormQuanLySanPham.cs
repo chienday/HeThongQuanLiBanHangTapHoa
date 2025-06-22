@@ -1,5 +1,6 @@
 ﻿using POSMini.Models;
-using POSMini.Services;
+using POSMini.Service;
+using POSMini.Service.Singleton;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -24,39 +25,44 @@ namespace POSMini
 
         private void FormQuanLySanPham_Load(object sender, EventArgs e)
         {
+            dgvSanPham.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvSanPham.MultiSelect = false;
             LoadData();
             LoadProductTypesComboBox();
         }
         private void LoadProductTypesComboBox()
         {
             cmbTenLoai.Items.Clear();
-            cmbTenLoai.Items.AddRange(new object[] { "Nước giải khát", "Đồ ăn vặt", "Đồ gia dụng", "Sản phẩm khác" });
+            cmbTenLoai.Items.AddRange(new object[] { "Đồ uống", "Bánh kẹo", "Mì gói", "Gia vị", "Đồ dùng", "Sản phẩm khác" });
             cmbTenLoai.SelectedIndex = -1;
         }
         private void LoadData()
         {
-            var allSP = SanPhamService.Instance.GetAllSP();
-            SetupDataGridView();
-            dgvSanPham.DataSource = allSP;
+            dgvSanPham.DataSource = null; // Xóa dữ liệu cũ
+            var allProducts = SanPhamService.Instance.GetAllSP();
+            SetupDataGridView(); // Cài đặt cột trước
+            dgvSanPham.DataSource = allProducts; // Gán dữ liệu mới
             ClearInputs();
         }
         private void SetupDataGridView()
         {
             dgvSanPham.AutoGenerateColumns = false;
             dgvSanPham.Columns.Clear();
+
             var checkColumn = new DataGridViewCheckBoxColumn
             {
-                Name = "colChon",
+                Name = "colChon",       
                 HeaderText = "Chọn",
-                Width = 50,
-
+                Width = 50
             };
             dgvSanPham.Columns.Add(checkColumn);
-
+            
             dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "MaSP", HeaderText = "Mã SP" });
             dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TenSP", HeaderText = "Tên Sản Phẩm" });
-            dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "GiaBan", HeaderText = "Giá Bán" });
             dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TenLoai", HeaderText = "Loại" });
+            dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "GiaNhap", HeaderText = "Giá Nhập" });
+            dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "GiaBan", HeaderText = "Giá Bán" });
+            dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "MoTa", HeaderText = "Mô Tả" });
 
             dgvSanPham.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         }
@@ -66,13 +72,17 @@ namespace POSMini
             _selectedMaSP = null;
             txtMaSP.Clear();
             txtTenSP.Clear();
+            cmbTenLoai.SelectedIndex = -1;
             cmbTenLoai.Text = "";
             txtGiaBan.Clear();
-            txtSoLuong.Clear();
+            txtGiaNhap.Clear();
+            txtSoLuongTon.Clear();
+            txtMoTa.Clear();
             txtHinhAnhUrl.Clear();
             picHinhAnh.ImageLocation = null;
             //picHinhAnh.Tag = null;
             txtMaSP.Enabled = true;
+            if (chkSelectAll != null) chkSelectAll.Checked = false;
         }
 
         private void dgvSanPham_CellClick(object sender, DataGridViewCellEventArgs e)
@@ -80,38 +90,27 @@ namespace POSMini
             if (e.RowIndex < 0) return;
 
             var row = dgvSanPham.Rows[e.RowIndex];
-            var sanPham = row.DataBoundItem as SanPham;
-            if (sanPham == null)
-            {
-                ClearInputs();
-                return;
-            }
+            var viewModel = row.DataBoundItem as SanPhamViewModel;
+            if (viewModel == null) { ClearInputs(); return; }
 
-            _selectedMaSP = sanPham.MaSP;
-            txtMaSP.Text = sanPham.MaSP;
-            txtTenSP.Text = sanPham.TenSP;
-            cmbTenLoai.Text = sanPham.TenLoai;
-            txtGiaBan.Text = sanPham.GiaBan.ToString();
-            txtSoLuong.Text = sanPham.SoLuong.ToString();
+            _selectedMaSP = viewModel.MaSP;
+            txtMaSP.Text = viewModel.MaSP;
+            txtTenSP.Text = viewModel.TenSP;
+            cmbTenLoai.Text = viewModel.TenLoai;
+            txtGiaNhap.Text = viewModel.GiaNhap.ToString();
+            txtGiaBan.Text = viewModel.GiaBan.ToString();
+            txtSoLuongTon.Text = viewModel.SoLuongTon.ToString();
+            txtHinhAnhUrl.Text = viewModel.HinhAnh;
+            txtMoTa.Text = viewModel.MoTa;
 
-            txtHinhAnhUrl.Text = sanPham.HinhAnh; // Hiển thị URL lên TextBox
-            if (!string.IsNullOrEmpty(sanPham.HinhAnh))
+            if (!string.IsNullOrEmpty(viewModel.HinhAnh))
             {
-                try
-                {
-                    // PictureBox có thể tải ảnh trực tiếp từ URL
-                    picHinhAnh.ImageLocation = sanPham.HinhAnh;
-                }
-                catch (Exception)
-                {
-                    // Nếu URL lỗi hoặc không có mạng, không hiển thị ảnh
-                    picHinhAnh.Image = null;
-                }
+                try { picHinhAnh.ImageLocation = viewModel.HinhAnh; }
+                catch { picHinhAnh.Image = null; }
             }
-            else
-            {
-                picHinhAnh.Image = null;
-            }
+            else { picHinhAnh.Image = null; }
+
+            picHinhAnh.Tag = viewModel.HinhAnh;
             txtMaSP.Enabled = false;
         }
 
@@ -129,139 +128,6 @@ namespace POSMini
                 picHinhAnh.Tag = dialog.FileName;
             }
         }
-
-
-
-        private void btnThem_Click(object sender, EventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(txtMaSP.Text) || string.IsNullOrWhiteSpace(txtTenSP.Text)
-                || string.IsNullOrWhiteSpace(txtSoLuong.Text) || string.IsNullOrWhiteSpace(txtGiaBan.Text))
-            {
-                MessageBox.Show("Không được để trống trường thông tin!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            //string imagePathInApp = SaveImageAndGetPath();
-
-            var sanPham = new SanPham
-            {
-                MaSP = txtMaSP.Text,
-                TenSP = txtTenSP.Text,
-                TenLoai = cmbTenLoai.Text,
-                GiaBan = decimal.TryParse(txtGiaBan.Text, out decimal gia) ? gia : 0,
-                SoLuong = int.TryParse(txtSoLuong.Text, out int sl) ? sl : 0,
-                HinhAnh = txtHinhAnhUrl.Text.Trim()
-            };
-
-            if (SanPhamService.Instance.ThemSP(sanPham))
-            {
-                MessageBox.Show("Thêm sản phẩm thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadData();
-            }
-            else
-            {
-                MessageBox.Show("Thêm sản phẩm thất bại. Mã sản phẩm có thể đã tồn tại.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void btnSua_Click(object sender, EventArgs e)
-        {
-            if (string.IsNullOrEmpty(_selectedMaSP))
-            {
-                MessageBox.Show("Vui lòng chọn một sản phẩm từ danh sách để sửa!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            //string imagePathInApp = SaveImageAndGetPath();
-
-            var sanPham = new SanPham
-            {
-                MaSP = _selectedMaSP,
-                TenSP = txtTenSP.Text,
-                TenLoai = cmbTenLoai.Text,
-                GiaBan = decimal.TryParse(txtGiaBan.Text, out decimal gia) ? gia : 0,
-                SoLuong = int.TryParse(txtSoLuong.Text, out int sl) ? sl : 0,
-                HinhAnh = txtHinhAnhUrl.Text.Trim()
-            };
-
-            if (SanPhamService.Instance.SuaSP(sanPham))
-            {
-                MessageBox.Show("Cập nhật sản phẩm thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadData();
-            }
-            else
-            {
-                MessageBox.Show("Cập nhật sản phẩm thất bại.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void btnXoa_Click(object sender, EventArgs e)
-        {
-            var maSPToDelete = new List<string>();
-
-            foreach (DataGridViewRow row in dgvSanPham.Rows)
-            {
-                bool isSelected = Convert.ToBoolean(row.Cells["colChon"].Value);
-
-                if (isSelected)
-                {
-                    var sanPham = row.DataBoundItem as SanPham;
-                    if (sanPham != null)
-                    {
-                        maSPToDelete.Add(sanPham.MaSP);
-                    }
-                }
-            }
-
-            if (maSPToDelete.Count == 0)
-            {
-                MessageBox.Show("Vui lòng chọn ít nhất một sản phẩm để xóa!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            string message = $"Bạn có chắc chắn muốn xóa {maSPToDelete.Count} sản phẩm đã chọn?";
-            var confirmResult = MessageBox.Show(message, "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-            if (confirmResult == DialogResult.Yes)
-            {
-
-                if (SanPhamService.Instance.XoaNhieuSP(maSPToDelete))
-                {
-                    MessageBox.Show("Xóa sản phẩm thành công!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    LoadData();
-                }
-                else
-                {
-                    MessageBox.Show("Xóa thất bại.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-
-        private void btnTimKiem_Click(object sender, EventArgs e)
-        {
-            string searchTerm = txtTimKiem.Text.Trim();
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                MessageBox.Show("Vui lòng nhập từ khóa tìm kiếm.");
-                return;
-            }
-
-            var searchResults = SanPhamService.Instance.TimKiemSP(searchTerm);
-
-            dgvSanPham.DataSource = searchResults;
-
-            if (searchResults.Count == 0)
-            {
-                MessageBox.Show("Không tìm thấy sản phẩm nào khớp.");
-            }
-        }
-
-        private void btnLamMoi_Click(object sender, EventArgs e)
-        {
-            txtTimKiem.Clear();
-            LoadData();
-        }
-
 
 
         private void chkSelectAll_CheckedChanged(object sender, EventArgs e)
@@ -337,6 +203,143 @@ namespace POSMini
             else
             {
                 picHinhAnh.Image = null;
+            }
+        }
+
+        private void btnXemAnh_Click_1(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrEmpty(txtHinhAnhUrl.Text))
+            {
+                try { picHinhAnh.ImageLocation = txtHinhAnhUrl.Text.Trim(); }
+                catch (Exception ex) { MessageBox.Show("Không thể tải ảnh: " + ex.Message); }
+            }
+        }
+
+        private void btnThem_Click_1(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtMaSP.Text) || string.IsNullOrWhiteSpace(txtTenSP.Text))
+            {
+                MessageBox.Show("Mã và Tên sản phẩm không được để trống!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var sanPham = new SanPham
+            {
+                MaSP = txtMaSP.Text.Trim(),
+                TenSP = txtTenSP.Text.Trim(),
+                MaLoai = cmbTenLoai.SelectedValue?.ToString(),
+                GiaNhap = decimal.TryParse(txtGiaNhap.Text, out var gn) ? gn : 0,
+                GiaBan = decimal.TryParse(txtGiaBan.Text, out var gb) ? gb : 0,
+                SoLuongTon = int.TryParse(txtSoLuongTon.Text, out var sl) ? sl : 0,
+                MoTa = txtMoTa.Text.Trim(),
+                HinhAnh = txtHinhAnhUrl.Text.Trim(),
+                DonViTinh = "Cái",
+                TrangThai = true
+            };
+
+            if (SanPhamService.Instance.ThemSP(sanPham))
+            {
+                MessageBox.Show("Thêm sản phẩm thành công!");
+                LoadData();
+            }
+            else
+            {
+                MessageBox.Show("Thêm thất bại. Mã sản phẩm có thể đã tồn tại.");
+            }
+        }
+
+        private void btnSua_Click_1(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(_selectedMaSP))
+            {
+                MessageBox.Show("Vui lòng chọn sản phẩm để sửa!");
+                return;
+            }
+
+            var sanPham = new SanPham
+            {
+                MaSP = _selectedMaSP,
+                TenSP = txtTenSP.Text.Trim(),
+                MaLoai = cmbTenLoai.SelectedValue?.ToString(),
+                GiaNhap = decimal.TryParse(txtGiaNhap.Text, out var gn) ? gn : 0,
+                GiaBan = decimal.TryParse(txtGiaBan.Text, out var gb) ? gb : 0,
+                SoLuongTon = int.TryParse(txtSoLuongTon.Text, out var sl) ? sl : 0,
+                MoTa = txtMoTa.Text.Trim(),
+                HinhAnh = txtHinhAnhUrl.Text.Trim(),
+                DonViTinh = "Cái",
+                TrangThai = true
+            };
+
+            if (SanPhamService.Instance.SuaSP(sanPham))
+            {
+                MessageBox.Show("Cập nhật thành công!");
+                LoadData();
+            }
+            else
+            {
+                MessageBox.Show("Cập nhật thất bại.");
+            }
+        }
+
+        private void btnXoa_Click_1(object sender, EventArgs e)
+        {
+            var maSPToDelete = new List<string>();
+            foreach (DataGridViewRow row in dgvSanPham.Rows)
+            {
+                if (row.IsNewRow) continue;
+                if (Convert.ToBoolean(row.Cells["colChon"].Value))
+                {
+                    var viewModel = row.DataBoundItem as SanPhamViewModel;
+                    if (viewModel != null) maSPToDelete.Add(viewModel.MaSP);
+                }
+            }
+
+            if (maSPToDelete.Count == 0)
+            {
+                MessageBox.Show("Vui lòng chọn ít nhất một sản phẩm để xóa!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string message = $"Bạn có chắc muốn xóa (ngừng kinh doanh) {maSPToDelete.Count} sản phẩm đã chọn?";
+            if (MessageBox.Show(message, "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                if (SanPhamService.Instance.XoaNhieuSP(maSPToDelete))
+                {
+                    MessageBox.Show("Xóa sản phẩm thành công!");
+                    LoadData();
+                }
+                else
+                {
+                    MessageBox.Show("Xóa thất bại.");
+                }
+            }
+        }
+
+        private void btnTimKiem_Click_1(object sender, EventArgs e)
+        {
+            string searchTerm = txtTimKiem.Text.Trim();
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                LoadData(); // Nếu ô tìm kiếm trống thì tải lại toàn bộ
+                return;
+            }
+            dgvSanPham.DataSource = SanPhamService.Instance.SearchProductsForDisplay(searchTerm);
+        }
+
+        private void btnLamMoi_Click_1(object sender, EventArgs e)
+        {
+            txtTimKiem.Clear();
+            LoadData();
+        }
+
+        private void chkSelectAll_CheckedChanged_1(object sender, EventArgs e)
+        {
+            if (dgvSanPham.Rows.Count == 0) return;
+            dgvSanPham.EndEdit();
+            foreach (DataGridViewRow row in dgvSanPham.Rows)
+            {
+                if (row.IsNewRow) continue;
+                row.Cells["colChon"].Value = chkSelectAll.Checked;
             }
         }
     }

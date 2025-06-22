@@ -11,7 +11,7 @@ namespace POSMini.Service.Singleton
 
         private DatabaseConnection()
         {
-            connectionString = @"Data Source=MSI\SQLEXPRESS;Initial Catalog=Posmini;Integrated Security=True";
+            connectionString = @"Server=LAPTOP-BAR8P7OI\SQLEXPRESS;Initial Catalog=Posmini;Integrated Security=True;";
         }
 
         public static DatabaseConnection Instance
