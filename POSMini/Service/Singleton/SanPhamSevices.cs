@@ -37,9 +37,9 @@ namespace POSMini.Service.Singleton
 
         // Lấy danh sách sản phẩm từ database
 
-        private List<SanPhamViewModel> ExecuteViewModelQuery(string query, SqlParameter[] parameters = null)
+        private List<SanPhamView> ExecuteViewModelQuery(string query, SqlParameter[] parameters = null)
         {
-            var sp = new List<SanPhamViewModel>();
+            var sp = new List<SanPhamView>();
             using (var conn = DatabaseConnection.Instance.GetConnection())
             using (var cmd = new SqlCommand(query, conn))
             {
@@ -52,14 +52,14 @@ namespace POSMini.Service.Singleton
                 {
                     while (reader.Read())
                     {
-                        // Tạo đối tượng SanPhamViewModel với các trường bạn đã yêu cầu
-                        sp.Add(new SanPhamViewModel
+                        sp.Add(new SanPhamView
                         {
                             MaSP = reader["MaSP"].ToString(),
                             TenSP = reader["TenSP"].ToString(),
+                            MaLoai = reader["MaLoai"].ToString(), // Đọc MaLoai từ kết quả query
                             TenLoai = reader["TenLoai"].ToString(),
-                            GiaBan = Convert.ToDecimal(reader["GiaBan"]),
                             GiaNhap = Convert.ToDecimal(reader["GiaNhap"]),
+                            GiaBan = Convert.ToDecimal(reader["GiaBan"]),
                             SoLuongTon = Convert.ToInt32(reader["SoLuongTon"]),
                             HinhAnh = reader["HinhAnh"] == DBNull.Value ? null : reader["HinhAnh"].ToString(),
                             MoTa = reader["MoTa"] == DBNull.Value ? string.Empty : reader["MoTa"].ToString()
@@ -69,26 +69,30 @@ namespace POSMini.Service.Singleton
             }
             return sp;
         }
-        public List<SanPhamViewModel> GetAllSP()
+        public List<SanPhamView> GetAllSP()
         {
             string query = @"
-                SELECT 
-                    sp.MaSP, sp.TenSP, lsp.TenLoai, sp.GiaBan, sp.GiaNhap, sp.SoLuongTon, sp.HinhAnh, sp.MoTa 
-                FROM SanPham sp
-                LEFT JOIN LoaiSanPham lsp ON sp.MaLoai = lsp.MaLoai
-                ORDER BY sp.TenSP ASC";
+        SELECT 
+            sp.MaSP, sp.TenSP, sp.MaLoai, lsp.TenLoai, sp.GiaNhap, 
+            sp.GiaBan, sp.SoLuongTon, sp.HinhAnh, sp.MoTa 
+        FROM SanPham sp
+        LEFT JOIN LoaiSanPham lsp ON sp.MaLoai = lsp.MaLoai
+        WHERE sp.TrangThai = 1
+        ORDER BY sp.TenSP ASC";
             return ExecuteViewModelQuery(query);
         }
 
         //Tìm kiếm sản phẩm
-        public List<SanPhamViewModel> SearchProductsForDisplay(string searchTerm)
+        public List<SanPhamView> SearchProductsForDisplay(string searchTerm)
         {
             string query = @"
-                SELECT sp.MaSP, sp.TenSP, lsp.TenLoai, sp.GiaNhap, sp.GiaBan, sp.SoLuongTon, sp.HinhAnh , sp.MoTa 
-                FROM SanPham sp
-                LEFT JOIN LoaiSanPham lsp ON sp.MaLoai = lsp.MaLoai
-                WHERE sp.TrangThai = 1 AND (sp.TenSP LIKE @searchTerm OR sp.MaSP LIKE @searchTerm OR lsp.TenLoai LIKE @searchTerm)
-                ORDER BY sp.TenSP ASC";
+        SELECT 
+            sp.MaSP, sp.TenSP, sp.MaLoai, lsp.TenLoai, sp.GiaNhap, sp.GiaBan, 
+            sp.SoLuongTon, sp.HinhAnh, sp.MoTa 
+        FROM SanPham sp
+        LEFT JOIN LoaiSanPham lsp ON sp.MaLoai = lsp.MaLoai
+        WHERE sp.TrangThai = 1 AND (sp.TenSP LIKE @searchTerm OR sp.MaSP LIKE @searchTerm OR lsp.TenLoai LIKE @searchTerm)
+        ORDER BY sp.TenSP ASC";
             var parameters = new SqlParameter[] { new SqlParameter("@searchTerm", $"%{searchTerm}%") };
             return ExecuteViewModelQuery(query, parameters);
         }
@@ -96,7 +100,7 @@ namespace POSMini.Service.Singleton
         //Thêm sản phẩm
         public bool ThemSP(SanPham sanPham)
         {
-            string query = "INSERT INTO SanPham (MaSP, TenSP, MaLoai, GiaNhap, GiaBan, SoLuongTon, SoLuongToiThieu, DonViTinh, MoTa, TrangThai, NgayTao, NgayCapNhat) VALUES (@MaSP, @TenSP, @MaLoai, @GiaNhap, @GiaBan, @SoLuongTon, @SoLuongToiThieu, @DonViTinh, @MoTa, @TrangThai, GETDATE(), GETDATE())";
+            string query = "INSERT INTO SanPham (MaSP, TenSP, MaLoai, GiaNhap, GiaBan, SoLuongTon, SoLuongToiThieu, DonViTinh, MoTa, TrangThai, HinhAnh, NgayTao) VALUES (@MaSP, @TenSP, @MaLoai, @GiaNhap, @GiaBan, @SoLuongTon, @SoLuongToiThieu, @DonViTinh, @MoTa, @TrangThai, @HinhAnh, GETDATE())";
             using (var conn = DatabaseConnection.Instance.GetConnection())
             using (var cmd = new SqlCommand(query, conn))
             {
@@ -111,7 +115,6 @@ namespace POSMini.Service.Singleton
                 cmd.Parameters.AddWithValue("@MoTa", (object)sanPham.MoTa ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@TrangThai", sanPham.TrangThai);
                 cmd.Parameters.AddWithValue("@HinhAnh", (object)sanPham.HinhAnh ?? DBNull.Value);
-
                 conn.Open();
                 return cmd.ExecuteNonQuery() > 0;
             }
@@ -152,7 +155,7 @@ namespace POSMini.Service.Singleton
         //Xóa sản phẩm
         public bool XoaSP(string maSP)
         {
-            // Thay vì DELETE, chúng ta UPDATE cột TrangThai = 0
+            // Thay vì DELETE, UPDATE cột TrangThai = 0
             string query = "UPDATE SanPham SET TrangThai = 0 WHERE MaSP = @MaSP";
             using (var conn = DatabaseConnection.Instance.GetConnection())
             using (var cmd = new SqlCommand(query, conn))
@@ -195,6 +198,7 @@ namespace POSMini.Service.Singleton
         {
             var types = new List<LoaiSanPham>();
             string query = "SELECT MaLoai, TenLoai FROM LoaiSanPham WHERE TrangThai = 1 ORDER BY TenLoai";
+
             using (var conn = DatabaseConnection.Instance.GetConnection())
             using (var cmd = new SqlCommand(query, conn))
             {
@@ -214,6 +218,5 @@ namespace POSMini.Service.Singleton
             return types;
         }
     }
-
-
 }
+

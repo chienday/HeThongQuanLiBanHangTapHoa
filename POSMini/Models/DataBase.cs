@@ -19,7 +19,7 @@ namespace POSMini.Models
         public DateTime? NgayCapNhat { get; set; } = DateTime.Now;
     }
 
-    public class LoaiSanPham
+    /*public class LoaiSanPham
     {
         public string MaLoai { get; set; }
         public string TenLoai { get; set; }
@@ -27,7 +27,7 @@ namespace POSMini.Models
         public bool TrangThai { get; set; } = true;
         public DateTime NgayTao { get; set; } = DateTime.Now;
     }
-
+    */
     public class NhaCungCap
     {
         public string MaNCC { get; set; }
@@ -39,7 +39,7 @@ namespace POSMini.Models
         public DateTime NgayTao { get; set; } = DateTime.Now;
     }
 
-    public class SanPham
+    /*public class SanPham
     {
         public string MaSP { get; set; }
         public string TenSP { get; set; }
@@ -54,7 +54,7 @@ namespace POSMini.Models
         public bool TrangThai { get; set; } = true;
         public DateTime NgayTao { get; set; } = DateTime.Now;
         public DateTime? NgayCapNhat { get; set; } = DateTime.Now;
-    }
+    }*/
 
     public class PhieuNhapHang
     {

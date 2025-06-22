@@ -32,8 +32,18 @@ namespace POSMini
         }
         private void LoadProductTypesComboBox()
         {
-            cmbTenLoai.Items.Clear();
-            cmbTenLoai.Items.AddRange(new object[] { "Đồ uống", "Bánh kẹo", "Mì gói", "Gia vị", "Đồ dùng", "Sản phẩm khác" });
+            var productTypes = SanPhamService.Instance.GetLoai();
+
+            // 2. Gán danh sách này làm nguồn dữ liệu
+            cmbTenLoai.DataSource = productTypes;
+
+            // 3. Chỉ định cho ComboBox biết:
+            // - Hiển thị thuộc tính 'TenLoai' cho người dùng thấy
+            cmbTenLoai.DisplayMember = "TenLoai";
+            // - Khi ta lấy giá trị, hãy lấy thuộc tính 'MaLoai'
+            cmbTenLoai.ValueMember = "MaLoai";
+
+            // 4. Bỏ chọn mục mặc định
             cmbTenLoai.SelectedIndex = -1;
         }
         private void LoadData()
@@ -51,12 +61,12 @@ namespace POSMini
 
             var checkColumn = new DataGridViewCheckBoxColumn
             {
-                Name = "colChon",       
+                Name = "colChon",
                 HeaderText = "Chọn",
                 Width = 50
             };
             dgvSanPham.Columns.Add(checkColumn);
-            
+
             dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "MaSP", HeaderText = "Mã SP" });
             dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TenSP", HeaderText = "Tên Sản Phẩm" });
             dgvSanPham.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "TenLoai", HeaderText = "Loại" });
@@ -88,15 +98,14 @@ namespace POSMini
         private void dgvSanPham_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
-
             var row = dgvSanPham.Rows[e.RowIndex];
-            var viewModel = row.DataBoundItem as SanPhamViewModel;
+            var viewModel = row.DataBoundItem as SanPhamView;
             if (viewModel == null) { ClearInputs(); return; }
 
             _selectedMaSP = viewModel.MaSP;
             txtMaSP.Text = viewModel.MaSP;
             txtTenSP.Text = viewModel.TenSP;
-            cmbTenLoai.Text = viewModel.TenLoai;
+            cmbTenLoai.SelectedValue = viewModel.MaLoai;
             txtGiaNhap.Text = viewModel.GiaNhap.ToString();
             txtGiaBan.Text = viewModel.GiaBan.ToString();
             txtSoLuongTon.Text = viewModel.SoLuongTon.ToString();
@@ -215,7 +224,37 @@ namespace POSMini
             }
         }
 
-        private void btnThem_Click_1(object sender, EventArgs e)
+        private void chkSelectAll_CheckedChanged_1(object sender, EventArgs e)
+        {
+            if (dgvSanPham.Rows.Count == 0) return;
+            dgvSanPham.EndEdit();
+            foreach (DataGridViewRow row in dgvSanPham.Rows)
+            {
+                if (row.IsNewRow) continue;
+                row.Cells["colChon"].Value = chkSelectAll.Checked;
+            }
+        }
+
+        private void btnLamMoi_Click(object sender, EventArgs e)
+        {
+            txtTimKiem.Clear();
+            LoadData();
+
+        }
+
+        private void btnTimKiem_Click(object sender, EventArgs e)
+        {
+            string searchTerm = txtTimKiem.Text.Trim();
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                LoadData();
+                return;
+            }
+            dgvSanPham.DataSource = SanPhamService.Instance.SearchProductsForDisplay(searchTerm);
+
+        }
+
+        private void btnThem_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(txtMaSP.Text) || string.IsNullOrWhiteSpace(txtTenSP.Text))
             {
@@ -246,9 +285,10 @@ namespace POSMini
             {
                 MessageBox.Show("Thêm thất bại. Mã sản phẩm có thể đã tồn tại.");
             }
+
         }
 
-        private void btnSua_Click_1(object sender, EventArgs e)
+        private void btnSua_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(_selectedMaSP))
             {
@@ -281,7 +321,7 @@ namespace POSMini
             }
         }
 
-        private void btnXoa_Click_1(object sender, EventArgs e)
+        private void btnXoa_Click(object sender, EventArgs e)
         {
             var maSPToDelete = new List<string>();
             foreach (DataGridViewRow row in dgvSanPham.Rows)
@@ -289,7 +329,7 @@ namespace POSMini
                 if (row.IsNewRow) continue;
                 if (Convert.ToBoolean(row.Cells["colChon"].Value))
                 {
-                    var viewModel = row.DataBoundItem as SanPhamViewModel;
+                    var viewModel = row.DataBoundItem as SanPhamView;
                     if (viewModel != null) maSPToDelete.Add(viewModel.MaSP);
                 }
             }
@@ -313,34 +353,7 @@ namespace POSMini
                     MessageBox.Show("Xóa thất bại.");
                 }
             }
-        }
 
-        private void btnTimKiem_Click_1(object sender, EventArgs e)
-        {
-            string searchTerm = txtTimKiem.Text.Trim();
-            if (string.IsNullOrWhiteSpace(searchTerm))
-            {
-                LoadData(); // Nếu ô tìm kiếm trống thì tải lại toàn bộ
-                return;
-            }
-            dgvSanPham.DataSource = SanPhamService.Instance.SearchProductsForDisplay(searchTerm);
-        }
-
-        private void btnLamMoi_Click_1(object sender, EventArgs e)
-        {
-            txtTimKiem.Clear();
-            LoadData();
-        }
-
-        private void chkSelectAll_CheckedChanged_1(object sender, EventArgs e)
-        {
-            if (dgvSanPham.Rows.Count == 0) return;
-            dgvSanPham.EndEdit();
-            foreach (DataGridViewRow row in dgvSanPham.Rows)
-            {
-                if (row.IsNewRow) continue;
-                row.Cells["colChon"].Value = chkSelectAll.Checked;
-            }
         }
     }
 }
